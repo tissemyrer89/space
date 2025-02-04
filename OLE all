@@ -1,0 +1,19 @@
+import cv2, piexif  
+from datetime import datetime  
+
+def get_time(img):  
+    return datetime.strptime(piexif.load(img)["Exif"].get(piexif.ExifIFD.DateTimeOriginal, b"").decode(), "%Y:%m:%d %H:%M:%S")  
+
+def get_pos(img):  
+    M = cv2.moments(max(cv2.findContours(cv2.threshold(cv2.imread(img, 0), 200, 255, cv2.THRESH_BINARY)[1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0], key=cv2.contourArea, default=[]))  
+    return (M["m10"]/M["m00"], M["m01"]/M["m00"]) if M.get("m00") else None  
+
+i1, i2, px_km = r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0673.jpg", r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0674.jpg", 0.1  
+
+t1, t2 = get_time(i1), get_time(i2)
+print(f"Photo 1: {t1}, Photo 2: {t2}")
+
+if (t := (t2 - t1).total_seconds()) > 0 and (p1 := get_pos(i1)) and (p2 := get_pos(i2)):  
+    speed = (((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5 * px_km) / t
+    with open("result.txt", "w") as f: 
+        f.write(f"Speed: {speed:.5g} km/s\nTime: {t:.2f} s\nDistance: {(((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5 * px_km):.5g} km")
