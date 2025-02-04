@@ -1,0 +1,7 @@
+import piexif
+
+exif_data = piexif.load(r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0673.jpg")
+
+print(f"Time Taken: {exif_data['Exif'].get(piexif.ExifIFD.DateTimeOriginal, b'').decode()}")
+print(f"Camera Make: {exif_data['0th'].get(piexif.ImageIFD.Make, b'').decode()}")
+print(f"Camera Model: {exif_data['0th'].get(piexif.ImageIFD.Model, b'').decode()}")
