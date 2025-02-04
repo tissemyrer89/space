@@ -1,0 +1,11 @@
+import piexif
+from datetime import datetime
+
+def get_time(img):
+    return datetime.strptime(piexif.load(img)["Exif"].get(piexif.ExifIFD.DateTimeOriginal, b"").decode(), "%Y:%m:%d %H:%M:%S")
+
+i1, i2 = r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0673.jpg", r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0674.jpg"
+
+t1, t2 = get_time(i1), get_time(i2)
+print(f"Photo 1 taken at: {t1}")
+print(f"Photo 2 taken at: {t2}")
