@@ -1,84 +1,17 @@
-import cv2
-import numpy as np
-import piexif
-from datetime import datetime
+import cv2, piexif  
+from datetime import datetime  
 
-def get_timestamp(image_path):
-    """Extract the timestamp from an image using EXIF data."""
-    exif_data = piexif.load(image_path)
-    if piexif.ExifIFD.DateTimeOriginal in exif_data["Exif"]:
-        timestamp_str = exif_data["Exif"][piexif.ExifIFD.DateTimeOriginal].decode()
-        return datetime.strptime(timestamp_str, "%Y:%m:%d %H:%M:%S")
-    return None
+def get_time(img):  
+    return datetime.strptime(piexif.load(img)["Exif"].get(piexif.ExifIFD.DateTimeOriginal, b"").decode(), "%Y:%m:%d %H:%M:%S")  
 
-def find_iss_position(image_path):
-    """Detect the ISS in an image and return its coordinates."""
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+def get_pos(img):  
+    M = cv2.moments(max(cv2.findContours(cv2.threshold(cv2.imread(img, 0), 200, 255, cv2.THRESH_BINARY)[1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0], key=cv2.contourArea, default=[]))  
+    return (M["m10"]/M["m00"], M["m01"]/M["m00"]) if M.get("m00") else None  
 
-    # Apply thresholding (adjust the value if needed)
-    _, thresh = cv2.threshold(image, 200, 255, cv2.THRESH_BINARY)
+i1, i2, px_km = r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0673.jpg", r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0674.jpg", 0.1  
 
-    # Find contours
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if not contours:
-        return None  # No ISS detected
-
-    # Get the largest contour (assuming ISS is the biggest bright object)
-    largest_contour = max(contours, key=cv2.contourArea)
-    M = cv2.moments(largest_contour)
-
-    if M["m00"] == 0:
-        return None
-
-    cx = int(M["m10"] / M["m00"])  # X position
-    cy = int(M["m01"] / M["m00"])  # Y position
-
-    return (cx, cy)
-
-def calculate_speed(image1_path, image2_path, pixel_to_km_ratio):
-    """Calculate ISS speed based on movement in two images."""
-    timestamp1 = get_timestamp(image1_path)
-    timestamp2 = get_timestamp(image2_path)
-
-    if not timestamp1 or not timestamp2:
-        print("Could not read timestamps from images.")
-        return None
-
-    # Time difference in seconds
-    time_diff_seconds = (timestamp2 - timestamp1).total_seconds()
-    if time_diff_seconds <= 0:
-        print("Invalid timestamps.")
-        return None
-
-    pos1 = find_iss_position(image1_path)
-    pos2 = find_iss_position(image2_path)
-
-    if pos1 is None or pos2 is None:
-        print("ISS not detected in one or both images.")
-        return None
-
-    # Calculate pixel distance
-    distance_pixels = ((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2) ** 0.5
-
-    # Convert pixels to kilometers
-    distance_km = distance_pixels * pixel_to_km_ratio
-
-    # Speed = Distance / Time
-    speed_km_s = distance_km / time_diff_seconds
-
-    return speed_km_s
-
-# Updated file paths
-image1 = r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0673.jpg"
-image2 = r"C:\Users\Elev\Desktop\python\i1gb2y\astropi-iss-speed-en-resources\photo_0678.jpg"
-
-pixel_to_km_ratio = 0.1  # Adjust based on camera settings
-
-speed = calculate_speed(image1, image2, pixel_to_km_ratio)
-
-if speed:
-    with open("result.txt", "w") as file:
-        file.write(f"{speed:.5g}")
-
-    print(f"Estimated ISS speed: {speed:.2f} km/s (saved to result.txt)")
+t1, t2 = get_time(i1), get_time(i2)
+if (t := (t2 - t1).total_seconds()) > 0 and (p1 := get_pos(i1)) and (p2 := get_pos(i2)):  
+    speed = (((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5 * px_km) / t
+    with open("result.txt", "w") as f: 
+        f.write(f"{speed:.5g}")
